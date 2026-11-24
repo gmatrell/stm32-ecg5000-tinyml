@@ -15,7 +15,5 @@ Each experiment contains its frozen TFLite model, a `results/experiment_summary.
 
 The DWT time was **measured on the MCU** and sent to the host. Energy was then **estimated** from that measured time and a profile or datasheet current. No current or complete-board energy was physically measured. NUCLEO and F746 estimates include modeled enabled-peripheral currents; the H573 estimate is an MCU-only typical LDO reference. The profiles differ across platforms, so their energy values should not be interpreted as an isolated CPU or clock comparison.
 
-The source folder for STM32H573I-DK is historically named `STM32H753I-DK`; the experiment records identify the actual board as H573.
-
-This repository provides the selected evidence for reviewer analysis. [Scope and open items](OPEN_ITEMS.md) records publication choices and remaining provenance limits.
+This repository provides the selected evidence for reviewer analysis.
 

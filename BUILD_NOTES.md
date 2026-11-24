@@ -12,4 +12,4 @@ The experiment build records identify STM32CubeIDE 1.11.2, Arm GNU Toolchain 13.
 
 ST firmware packages, the X-CUBE-AI runtime and generated code, TFLM/CMSIS source trees, machine-specific build scripts, and ELF/BIN outputs are not copied here. This package supports **offline review and recalculation of the reported results**; it has not been verified as a self-contained firmware build. The application source and serial validators document the measured inference window, and the [serial protocol](SERIAL_PROTOCOL.md) documents the host/board exchange.
 
-The archived linker maps for the three CMSIS-NN configurations contain `arm_fully_connected_wrapper_s8` and `arm_softmax_s8`, indicating that these optimized kernels were linked in the corresponding builds. The maps do not establish runtime execution.
+The archived linker maps for the three CMSIS-NN configurations contain `arm_fully_connected_wrapper_s8` and `arm_softmax_s8`, indicating that these optimized kernels were linked in the corresponding builds.
