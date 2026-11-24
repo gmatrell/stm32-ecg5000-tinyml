@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "experiment": "DENSE_INT8_TFLM_CMSIS-NN",
+  "board": "NUCLEO-L4R5ZI",
+  "runtime": "TFLM (CMSIS-NN)",
+  "model_format": "Full INT8",
+  "completed_at": "2026-09-25T11:47:20",
+  "source_run": "results/hardware_validation/run_20260925_114625",
+  "model_sha256": "e043b3ca9e1390d7a3ef4b31ec500cc81612bb912955cb6468a24d73c4793099",
+  "dataset_sha256": "261011d52919c2e6da91b135e228ad3c6725b15a9bf5ff5bbdc86b0b85b52bcb",
+  "items_evaluated": 1000,
+  "inference_window": "quantizzazione input, Invoke, dequantizzazione output",
+  "energy_voltage_v": 3.0,
+  "energy_source": "reports/power_estimation/theoretical_energy_estimate.md",
+  "hardware_accuracy": 0.948,
+  "hardware_balanced_accuracy": 0.5766594466491426,
+  "prediction_disagreements": 0,
+  "retries_used": 0,
+  "absolute_difference_max": 0.04296875,
+  "absolute_difference_mean": 8.749999688006938e-05,
+  "inference_time_us_mean": 321.13,
+  "inference_time_us_p95": 322.0,
+  "inference_time_us_min": 306.0,
+  "inference_time_us_max": 322.0,
+  "round_trip_ms_mean": 54.41692049987614,
+  "round_trip_ms_p95": 54.905920002784114,
+  "flash_bytes": 55776,
+  "ram_bytes": 19432,
+  "tensor_arena_bytes": 16384,
+  "energy_estimated_uj": 16.88629992,
+  "energy_mcu_base_uj": 16.37763,
+  "hardware_per_class": {
+    "1": {
+      "precision": 0.9897084048027445,
+      "recall": 0.988013698630137,
+      "f1_score": 0.988860325621251,
+      "support": 584,
+      "correct_predictions": 577
+    },
+    "2": {
+      "precision": 0.9060052219321149,
+      "recall": 0.9830028328611898,
+      "f1_score": 0.9429347826086957,
+      "support": 353,
+      "correct_predictions": 347
+    },
+    "3": {
+      "precision": 0.7333333333333333,
+      "recall": 0.5789473684210527,
+      "f1_score": 0.6470588235294118,
+      "support": 19,
+      "correct_predictions": 11
+    },
+    "4": {
+      "precision": 0.6842105263157895,
+      "recall": 0.3333333333333333,
+      "f1_score": 0.4482758620689655,
+      "support": 39,
+      "correct_predictions": 13
+    },
+    "5": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 5,
+      "correct_predictions": 0
+    }
+  }
+}

@@ -1,0 +1,253 @@
+#include "main.h"
+#include "serial_protocol.h"
+#include "model_data.h"
+
+#include <cmath>
+#include <cstdint>
+#include <new>
+
+#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/micro/cortex_m_generic/debug_log_callback.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#include "tensorflow/lite/schema/schema_generated.h"
+
+namespace {
+constexpr uint32_t kOutputClasses = 5U;
+constexpr size_t kTensorArenaBytes = 16384U;
+
+UART_HandleTypeDef g_uart;
+uint8_t g_inference_timer_available = 0U;
+alignas(16) uint8_t g_tensor_arena[kTensorArenaBytes];
+alignas(tflite::MicroInterpreter) uint8_t g_interpreter_storage[sizeof(tflite::MicroInterpreter)];
+tflite::MicroInterpreter* g_interpreter = nullptr;
+TfLiteTensor* g_input = nullptr;
+TfLiteTensor* g_output_tensor = nullptr;
+alignas(4) float g_input_float[ECG5000_INPUT_FLOATS];
+float g_output[kOutputClasses];
+uint32_t g_arena_used = 0U;
+
+void SystemClock_Config(void);
+void ICACHE_Init(void);
+uint8_t InferenceTimer_Init(void);
+void USART1_Init(void);
+void uart_write(const char* text);
+void tflm_log_callback(const char*) {}
+int uart_receive_exact(uint8_t* buffer, uint32_t size);
+uint32_t fnv1a(const uint8_t* buffer, uint32_t size, uint32_t hash);
+uint32_t read_u32_le(const uint8_t* buffer);
+void write_u32_le(uint8_t* buffer, uint32_t value);
+void copy_bytes(uint8_t* destination, const uint8_t* source, uint32_t size);
+void zero_output(void);
+uint32_t argmax_class(const float* values, uint32_t count);
+uint8_t tflm_initialize(void);
+uint8_t tflm_infer(void);
+uint32_t cycles_to_microseconds(uint32_t cycles);
+uint8_t receive_request(uint32_t* sequence);
+void send_response(uint32_t sequence, uint8_t status, uint8_t predicted_class,
+                   uint32_t inference_microseconds);
+}
+
+int main(void) {
+  HAL_Init();
+  SystemClock_Config();
+  ICACHE_Init();
+  g_inference_timer_available = InferenceTimer_Init();
+  USART1_Init();
+  const uint8_t runtime_status = tflm_initialize();
+
+  while (true) {
+    uint32_t sequence = 0U;
+    uint32_t inference_microseconds = 0U;
+    uint8_t status = receive_request(&sequence);
+    uint8_t predicted_class = 0U;
+    zero_output();
+    if (status == ECG5000_STATUS_OK && runtime_status != ECG5000_STATUS_OK) status = runtime_status;
+    if (status == ECG5000_STATUS_OK && g_inference_timer_available == 0U) status = ECG5000_STATUS_TIMER_ERROR;
+    if (status == ECG5000_STATUS_OK) {
+      const uint32_t start = DWT->CYCCNT;
+      status = tflm_infer();
+      const uint32_t elapsed = DWT->CYCCNT - start;
+      if (elapsed == 0U) status = ECG5000_STATUS_TIMER_ERROR;
+      else inference_microseconds = cycles_to_microseconds(elapsed);
+      if (status == ECG5000_STATUS_OK) predicted_class = static_cast<uint8_t>(argmax_class(g_output, kOutputClasses) + 1U);
+    }
+    send_response(sequence, status, predicted_class, inference_microseconds);
+  }
+}
+
+namespace {
+uint8_t tflm_initialize(void) {
+  RegisterDebugLogCallback(tflm_log_callback);
+  const tflite::Model* model = tflite::GetModel(g_model_data);
+  if (model == nullptr || model->version() != TFLITE_SCHEMA_VERSION) return ECG5000_STATUS_AI_INIT_ERROR;
+  static tflite::MicroMutableOpResolver<2> resolver;
+  if (resolver.AddFullyConnected() != kTfLiteOk || resolver.AddSoftmax() != kTfLiteOk) return ECG5000_STATUS_AI_INIT_ERROR;
+  g_interpreter = new (g_interpreter_storage) tflite::MicroInterpreter(model, resolver, g_tensor_arena, kTensorArenaBytes);
+  if (g_interpreter->AllocateTensors() != kTfLiteOk) return ECG5000_STATUS_AI_INIT_ERROR;
+  g_input = g_interpreter->input(0);
+  g_output_tensor = g_interpreter->output(0);
+  if (g_input == nullptr || g_output_tensor == nullptr || g_input->type != kTfLiteInt8 ||
+      g_output_tensor->type != kTfLiteInt8 || g_input->bytes != ECG5000_INPUT_FLOATS ||
+      g_output_tensor->bytes != kOutputClasses) return ECG5000_STATUS_AI_INIT_ERROR;
+  g_arena_used = static_cast<uint32_t>(g_interpreter->arena_used_bytes());
+  return ECG5000_STATUS_OK;
+}
+
+uint8_t tflm_infer(void) {
+  const float input_scale = g_input->params.scale;
+  const int32_t input_zero = g_input->params.zero_point;
+  const float output_scale = g_output_tensor->params.scale;
+  const int32_t output_zero = g_output_tensor->params.zero_point;
+  if (input_scale <= 0.0f || output_scale <= 0.0f) return ECG5000_STATUS_AI_RUN_ERROR;
+  for (uint32_t i = 0U; i < ECG5000_INPUT_FLOATS; ++i)
+  {
+    int32_t quantized = static_cast<int32_t>(std::round(g_input_float[i] / input_scale)) + input_zero;
+    if (quantized < -128) quantized = -128;
+    if (quantized > 127) quantized = 127;
+    g_input->data.int8[i] = static_cast<int8_t>(quantized);
+  }
+  if (g_interpreter->Invoke() != kTfLiteOk) return ECG5000_STATUS_AI_RUN_ERROR;
+  for (uint32_t i = 0U; i < kOutputClasses; ++i)
+    g_output[i] = (static_cast<int32_t>(g_output_tensor->data.int8[i]) - output_zero) * output_scale;
+  return ECG5000_STATUS_OK;
+}
+}
+
+namespace {
+uint32_t cycles_to_microseconds(uint32_t cycles) {
+  return static_cast<uint32_t>((static_cast<uint64_t>(cycles) * 1000000ULL +
+      (static_cast<uint64_t>(SystemCoreClock) / 2ULL)) / static_cast<uint64_t>(SystemCoreClock));
+}
+
+uint8_t receive_request(uint32_t* sequence) {
+  const uint8_t magic[4] = {'E', 'C', 'G', '1'};
+  uint8_t sequence_bytes[4], checksum_bytes[4], byte = 0U;
+  uint32_t matched = 0U;
+  while (matched < 4U) {
+    if (uart_receive_exact(&byte, 1U) != 0) return ECG5000_STATUS_CRC_ERROR;
+    if (byte == magic[matched]) ++matched;
+    else matched = (byte == magic[0]) ? 1U : 0U;
+  }
+  if (uart_receive_exact(sequence_bytes, 4U) != 0 ||
+      uart_receive_exact(reinterpret_cast<uint8_t*>(g_input_float), ECG5000_INPUT_BYTES) != 0 ||
+      uart_receive_exact(checksum_bytes, 4U) != 0) return ECG5000_STATUS_CRC_ERROR;
+  *sequence = read_u32_le(sequence_bytes);
+  uint32_t hash = fnv1a(sequence_bytes, 4U, 2166136261U);
+  const uint32_t expected = fnv1a(reinterpret_cast<const uint8_t*>(g_input_float), ECG5000_INPUT_BYTES, hash);
+  return (expected == read_u32_le(checksum_bytes)) ? ECG5000_STATUS_OK : ECG5000_STATUS_CRC_ERROR;
+}
+
+void send_response(uint32_t sequence, uint8_t status, uint8_t predicted_class, uint32_t inference_microseconds) {
+  uint8_t response[ECG5000_RESPONSE_BYTES] = {0};
+  copy_bytes(response, reinterpret_cast<const uint8_t*>(ECG5000_RESPONSE_MAGIC), 4U);
+  write_u32_le(&response[4], sequence);
+  response[8] = status; response[9] = predicted_class;
+  write_u32_le(&response[12], inference_microseconds);
+  copy_bytes(&response[16], reinterpret_cast<const uint8_t*>(g_output), 20U);
+  write_u32_le(&response[36], fnv1a(&response[4], 32U, 2166136261U));
+  (void)HAL_UART_Transmit(&g_uart, response, ECG5000_RESPONSE_BYTES, HAL_MAX_DELAY);
+}
+
+int uart_receive_exact(uint8_t* buffer, uint32_t size) {
+  return (HAL_UART_Receive(&g_uart, buffer, static_cast<uint16_t>(size), HAL_MAX_DELAY) == HAL_OK) ? 0 : 1;
+}
+uint32_t fnv1a(const uint8_t* buffer, uint32_t size, uint32_t hash) {
+  for (uint32_t i = 0U; i < size; ++i) { hash ^= buffer[i]; hash *= 16777619U; }
+  return hash;
+}
+uint32_t read_u32_le(const uint8_t* buffer) {
+  return static_cast<uint32_t>(buffer[0]) | (static_cast<uint32_t>(buffer[1]) << 8U) |
+         (static_cast<uint32_t>(buffer[2]) << 16U) | (static_cast<uint32_t>(buffer[3]) << 24U);
+}
+void write_u32_le(uint8_t* buffer, uint32_t value) {
+  buffer[0] = static_cast<uint8_t>(value); buffer[1] = static_cast<uint8_t>(value >> 8U);
+  buffer[2] = static_cast<uint8_t>(value >> 16U); buffer[3] = static_cast<uint8_t>(value >> 24U);
+}
+void copy_bytes(uint8_t* destination, const uint8_t* source, uint32_t size) {
+  for (uint32_t i = 0U; i < size; ++i) destination[i] = source[i];
+}
+void zero_output(void) { for (uint32_t i = 0U; i < kOutputClasses; ++i) g_output[i] = 0.0f; }
+uint32_t argmax_class(const float* values, uint32_t count) {
+  uint32_t best = 0U; for (uint32_t i = 1U; i < count; ++i) if (values[i] > values[best]) best = i; return best;
+}
+
+void USART1_Init(void)
+{
+  GPIO_InitTypeDef gpio = {};
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_USART1_CLK_ENABLE();
+
+  gpio.Pin = GPIO_PIN_9 | GPIO_PIN_10;
+  gpio.Mode = GPIO_MODE_AF_PP;
+  gpio.Pull = GPIO_PULLUP;
+  gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  gpio.Alternate = GPIO_AF7_USART1;
+  HAL_GPIO_Init(GPIOA, &gpio);
+
+  g_uart.Instance = USART1;
+  g_uart.Init.BaudRate = 115200U;
+  g_uart.Init.WordLength = UART_WORDLENGTH_8B;
+  g_uart.Init.StopBits = UART_STOPBITS_1;
+  g_uart.Init.Parity = UART_PARITY_NONE;
+  g_uart.Init.Mode = UART_MODE_TX_RX;
+  g_uart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  g_uart.Init.OverSampling = UART_OVERSAMPLING_16;
+  g_uart.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  g_uart.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  g_uart.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&g_uart) != HAL_OK) {
+    Error_Handler();
+  }
+}
+void uart_write(const char* text) {
+  while (*text != '\0') { (void)HAL_UART_Transmit(&g_uart, reinterpret_cast<uint8_t*>(const_cast<char*>(text)), 1U, HAL_MAX_DELAY); ++text; }
+}
+
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef oscillator = {};
+  RCC_ClkInitTypeDef clocks = {};
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
+  while (!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) { }
+  oscillator.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  oscillator.HSEState = RCC_HSE_BYPASS_DIGITAL;
+  oscillator.PLL.PLLState = RCC_PLL_ON;
+  oscillator.PLL.PLLSource = RCC_PLL1_SOURCE_HSE;
+  oscillator.PLL.PLLM = 5U;
+  oscillator.PLL.PLLN = 100U;
+  oscillator.PLL.PLLP = 2U;
+  oscillator.PLL.PLLQ = 2U;
+  oscillator.PLL.PLLR = 2U;
+  oscillator.PLL.PLLRGE = RCC_PLL1_VCIRANGE_2;
+  oscillator.PLL.PLLVCOSEL = RCC_PLL1_VCORANGE_WIDE;
+  oscillator.PLL.PLLFRACN = 0U;
+  if (HAL_RCC_OscConfig(&oscillator) != HAL_OK) {
+    Error_Handler();
+  }
+  clocks.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
+                     RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2 | RCC_CLOCKTYPE_PCLK3;
+  clocks.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  clocks.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  clocks.APB1CLKDivider = RCC_HCLK_DIV1;
+  clocks.APB2CLKDivider = RCC_HCLK_DIV1;
+  clocks.APB3CLKDivider = RCC_HCLK_DIV1;
+  if (HAL_RCC_ClockConfig(&clocks, FLASH_LATENCY_5) != HAL_OK) {
+    Error_Handler();
+  }
+  __HAL_FLASH_SET_PROGRAM_DELAY(FLASH_PROGRAMMING_DELAY_2);
+  SystemCoreClockUpdate();
+}
+void ICACHE_Init(void) { if (HAL_ICACHE_Enable() != HAL_OK) Error_Handler(); }
+uint8_t InferenceTimer_Init(void)
+{
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0U;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  return (((DWT->CTRL & DWT_CTRL_NOCYCCNT_Msk) == 0U) &&
+          ((DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) != 0U)) ? 1U : 0U;
+}
+}
+
+extern "C" void Error_Handler(void) { __disable_irq(); while (true) {} }
+extern "C" void SysTick_Handler(void) { HAL_IncTick(); }

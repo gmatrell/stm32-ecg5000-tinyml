@@ -1,0 +1,72 @@
+{
+  "completed_at": "2026-10-01T15:34:01",
+  "board_name": "STM32H573I-DK",
+  "baudrate": 115200,
+  "dataset": "ECG1000TEST.txt",
+  "tflite_model": "dense_f32_baseline_r001_float32.tflite",
+  "tflite_sha256": "652e44d3b7d2dd7d8e969e48858cdc27fcbf416502a145e3889c731d54db67f0",
+  "items_evaluated": 1000,
+  "dataset_class_distribution": {
+    "1": 584,
+    "2": 353,
+    "3": 19,
+    "4": 39,
+    "5": 5
+  },
+  "hardware_accuracy": 0.945,
+  "hardware_balanced_accuracy": 0.5749597299352616,
+  "tflite_accuracy": 0.945,
+  "tflite_balanced_accuracy": 0.5749597299352616,
+  "prediction_disagreements": 0,
+  "disagreement_indices_zero_based": [],
+  "absolute_difference_max": 7.748603820800781e-07,
+  "absolute_difference_mean": 1.7074292202323704e-08,
+  "inference_time_us_min": 183,
+  "inference_time_us_mean": 183.0,
+  "inference_time_us_max": 183,
+  "round_trip_ms_min": 53.566000002319925,
+  "round_trip_ms_mean": 53.845561600115616,
+  "round_trip_ms_max": 56.01290000777226,
+  "retries_used": 0,
+  "hardware_confusion_matrix": [
+    [
+      577,
+      7,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      344,
+      1,
+      8,
+      0
+    ],
+    [
+      4,
+      4,
+      11,
+      0,
+      0
+    ],
+    [
+      2,
+      23,
+      1,
+      13,
+      0
+    ],
+    [
+      0,
+      2,
+      2,
+      1,
+      0
+    ]
+  ],
+  "notes": [
+    "DWT misura la sola inferenza; il round-trip include USB, seriale e protocollo.",
+    "Dataset e modello sono letti senza modifiche."
+  ]
+}

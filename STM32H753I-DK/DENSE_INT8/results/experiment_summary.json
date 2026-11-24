@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "experiment": "DENSE_INT8",
+  "board": "STM32H573I-DK",
+  "runtime": "X-CUBE-AI 10.2.0",
+  "model_format": "TFLite full INT8; X-CUBE-AI C API Float32",
+  "completed_at": "2026-10-06T13:47:56",
+  "source_run": "results/hardware_validation/run_20261006_134702",
+  "model_sha256": "e043b3ca9e1390d7a3ef4b31ec500cc81612bb912955cb6468a24d73c4793099",
+  "dataset_sha256": "261011d52919c2e6da91b135e228ad3c6725b15a9bf5ff5bbdc86b0b85b52bcb",
+  "items_evaluated": 1000,
+  "inference_window": "ai_infer: preparazione buffer e chiamata al runtime X-CUBE-AI",
+  "energy_status": "theoretical_mcu_reference",
+  "energy_source": "reports/power_estimation/theoretical_energy_estimate.md",
+  "energy_note": "Riferimento datasheet, non misura fisica: VDD 3,0 V, VOS0, 250 MHz, Flash, I-cache 1-way, LDO tipico. USART1 e I/O non quantificati in Run mode.",
+  "board_name": "STM32H573I-DK",
+  "baudrate": 115200,
+  "dataset": "ECG1000TEST.txt",
+  "tflite_model": "dense_int8.tflite",
+  "tflite_sha256": "e043b3ca9e1390d7a3ef4b31ec500cc81612bb912955cb6468a24d73c4793099",
+  "dataset_class_distribution": {
+    "1": 584,
+    "2": 353,
+    "3": 19,
+    "4": 39,
+    "5": 5
+  },
+  "hardware_accuracy": 0.948,
+  "hardware_balanced_accuracy": 0.5766594466491426,
+  "tflite_accuracy": 0.948,
+  "tflite_balanced_accuracy": 0.5766594466491426,
+  "prediction_disagreements": 0,
+  "disagreement_indices_zero_based": [],
+  "absolute_difference_max": 0.0,
+  "absolute_difference_mean": 0.0,
+  "inference_time_us_min": 108,
+  "inference_time_us_mean": 110.97,
+  "inference_time_us_max": 111,
+  "round_trip_ms_min": 53.48539992701262,
+  "round_trip_ms_mean": 53.63482920068782,
+  "round_trip_ms_max": 54.50929992366582,
+  "retries_used": 0,
+  "hardware_confusion_matrix": [
+    [
+      577,
+      7,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      347,
+      1,
+      5,
+      0
+    ],
+    [
+      4,
+      4,
+      11,
+      0,
+      0
+    ],
+    [
+      2,
+      23,
+      1,
+      13,
+      0
+    ],
+    [
+      0,
+      2,
+      2,
+      1,
+      0
+    ]
+  ],
+  "notes": [
+    "DWT misura la sola inferenza; il round-trip include USB, seriale e protocollo.",
+    "Dataset e modello sono letti senza modifiche."
+  ],
+  "flash_bytes": 39764,
+  "ram_bytes": 5776,
+  "energy_reference_ldo_typical_uj": 9.720972,
+  "energy_reference_smps_typical_uj": 5.2932690000000004,
+  "hardware_per_class": [
+    {
+      "class": "1",
+      "precision": "0.9897084048027445",
+      "recall": "0.988013698630137",
+      "f1_score": "0.988860325621251",
+      "support": "584",
+      "correct_predictions": "577"
+    },
+    {
+      "class": "2",
+      "precision": "0.9060052219321149",
+      "recall": "0.9830028328611898",
+      "f1_score": "0.9429347826086957",
+      "support": "353",
+      "correct_predictions": "347"
+    },
+    {
+      "class": "3",
+      "precision": "0.7333333333333333",
+      "recall": "0.5789473684210527",
+      "f1_score": "0.6470588235294118",
+      "support": "19",
+      "correct_predictions": "11"
+    },
+    {
+      "class": "4",
+      "precision": "0.6842105263157895",
+      "recall": "0.3333333333333333",
+      "f1_score": "0.4482758620689655",
+      "support": "39",
+      "correct_predictions": "13"
+    },
+    {
+      "class": "5",
+      "precision": "0.0",
+      "recall": "0.0",
+      "f1_score": "0.0",
+      "support": "5",
+      "correct_predictions": "0"
+    }
+  ]
+}

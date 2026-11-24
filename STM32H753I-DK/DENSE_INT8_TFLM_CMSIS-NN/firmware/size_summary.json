@@ -1,0 +1,10 @@
+{
+  "source": "arm-none-eabi-size output from the archived local build",
+  "source_sha256": "78b185229527b6418562e44c5578c908f863f622a22f9ff3f7dcc94f20f750e9",
+  "source_elf_basename": "ecg5000_h573i_dk_dense_int8_tflm.elf",
+  "text_bytes": 63704,
+  "data_bytes": 96,
+  "bss_bytes": 19328,
+  "flash_bytes": 63800,
+  "ram_bytes": 19424
+}

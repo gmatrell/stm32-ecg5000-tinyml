@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "experiment": "DENSE_F32_TFLM",
+  "board": "NUCLEO-L4R5ZI",
+  "runtime": "TFLM (reference)",
+  "model_format": "Float32",
+  "completed_at": "2026-09-08T14:33:05",
+  "source_run": "results/hardware_validation/run_20260908_143210",
+  "model_sha256": "652e44d3b7d2dd7d8e969e48858cdc27fcbf416502a145e3889c731d54db67f0",
+  "dataset_sha256": "261011d52919c2e6da91b135e228ad3c6725b15a9bf5ff5bbdc86b0b85b52bcb",
+  "items_evaluated": 1000,
+  "inference_window": "copia input Float32, Invoke, copia output Float32",
+  "energy_voltage_v": 3.0,
+  "energy_source": "reports/power_estimation/theoretical_energy_estimate.md",
+  "hardware_accuracy": 0.945,
+  "hardware_balanced_accuracy": 0.5749597299352616,
+  "prediction_disagreements": 0,
+  "retries_used": 0,
+  "absolute_difference_max": 5.364418029785156e-07,
+  "absolute_difference_mean": 1.2831890217057662e-08,
+  "inference_time_us_mean": 517.45,
+  "inference_time_us_p95": 518.0,
+  "inference_time_us_min": 516.0,
+  "inference_time_us_max": 518.0,
+  "round_trip_ms_mean": 54.68073469970841,
+  "round_trip_ms_p95": 55.25079998187721,
+  "flash_bytes": 57260,
+  "ram_bytes": 19432,
+  "tensor_arena_bytes": 16384,
+  "energy_estimated_uj": 27.2095908,
+  "energy_mcu_base_uj": 26.389950000000002,
+  "hardware_per_class": {
+    "1": {
+      "precision": 0.9897084048027445,
+      "recall": 0.988013698630137,
+      "f1_score": 0.988860325621251,
+      "support": 584,
+      "correct_predictions": 577
+    },
+    "2": {
+      "precision": 0.9052631578947369,
+      "recall": 0.9745042492917847,
+      "f1_score": 0.9386084583901774,
+      "support": 353,
+      "correct_predictions": 344
+    },
+    "3": {
+      "precision": 0.7333333333333333,
+      "recall": 0.5789473684210527,
+      "f1_score": 0.6470588235294118,
+      "support": 19,
+      "correct_predictions": 11
+    },
+    "4": {
+      "precision": 0.5909090909090909,
+      "recall": 0.3333333333333333,
+      "f1_score": 0.4262295081967213,
+      "support": 39,
+      "correct_predictions": 13
+    },
+    "5": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 5,
+      "correct_predictions": 0
+    }
+  }
+}

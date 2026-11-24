@@ -1,0 +1,10 @@
+{
+  "source": "arm-none-eabi-size output from the archived local build",
+  "source_sha256": "58cfeb356d1613d9f28540bdf91238d5b14050a4baffe948473aa6d0e902439a",
+  "source_elf_basename": "ecg5000_f746_serial.elf",
+  "text_bytes": 37172,
+  "data_bytes": 1944,
+  "bss_bytes": 3440,
+  "flash_bytes": 39116,
+  "ram_bytes": 5384
+}
